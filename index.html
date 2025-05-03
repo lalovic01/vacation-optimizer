@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="sr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Optimizator Godišnjeg Odmora</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Optimizator Godišnjeg Odmora <span id="current-year"></span></h1>
+
+      <div class="controls">
+        <label for="vacation-days-input"
+          >Unesite broj dana godišnjeg odmora:</label
+        >
+        <input type="number" id="vacation-days-input" min="0" value="20" />
+        <button id="suggest-button">Prikaži Predloge</button>
+        <p>Preostalo dana: <span id="remaining-days"></span></p>
+      </div>
+
+      <div class="suggestions" id="suggestions-container">
+        <h2>Predlozi:</h2>
+        <ul id="suggestions-list"></ul>
+      </div>
+
+      <div class="calendar-container" id="calendar-container"></div>
+
+      <div class="legend">
+        <div><span class="day-indicator weekend"></span> Vikend</div>
+        <div><span class="day-indicator holiday"></span> Praznik</div>
+        <div><span class="day-indicator vacation"></span> Godišnji odmor</div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
