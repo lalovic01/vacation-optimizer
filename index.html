@@ -14,28 +14,29 @@
   </head>
   <body>
     <div class="container">
-      <h1>Optimizator Godišnjeg Odmora <span id="current-year"></span></h1>
+      <h1 id="page-title"><span id="page-title-text">Optimizator Godišnjeg Odmora</span> <span id="current-year"></span></h1>
 
       <div class="controls">
-        <label for="vacation-days-input"
+        <label id="vacation-days-label" for="vacation-days-input"
           >Unesite broj dana godišnjeg odmora:</label
         >
         <input type="number" id="vacation-days-input" min="0" value="20" />
         <button id="suggest-button">Prikaži Predloge</button>
-        <p>Preostalo dana: <span id="remaining-days"></span></p>
+        <button id="language-toggle" type="button">English</button>
+        <p><span id="remaining-label">Preostalo dana:</span> <span id="remaining-days"></span></p>
       </div>
 
       <div class="suggestions" id="suggestions-container">
-        <h2>Predlozi:</h2>
+        <h2 id="suggestions-heading">Predlozi:</h2>
         <ul id="suggestions-list"></ul>
       </div>
 
       <div class="calendar-container" id="calendar-container"></div>
 
       <div class="legend">
-        <div><span class="day-indicator weekend"></span> Vikend</div>
-        <div><span class="day-indicator holiday"></span> Praznik</div>
-        <div><span class="day-indicator vacation"></span> Godišnji odmor</div>
+        <div><span class="day-indicator weekend"></span> <span id="legend-weekend-label">Vikend</span></div>
+        <div><span class="day-indicator holiday"></span> <span id="legend-holiday-label">Praznik</span></div>
+        <div><span class="day-indicator vacation"></span> <span id="legend-vacation-label">Godišnji odmor</span></div>
       </div>
     </div>
 

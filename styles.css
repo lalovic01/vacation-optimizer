@@ -66,6 +66,14 @@ h2 {
   background-color: #0056b3;
 }
 
+#language-toggle {
+  background-color: #6c757d;
+}
+
+#language-toggle:hover {
+  background-color: #5a6268;
+}
+
 .controls p {
   margin: 0;
   font-weight: bold;

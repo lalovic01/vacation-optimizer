@@ -1,32 +1,134 @@
 document.addEventListener("DOMContentLoaded", () => {
   const currentYear = new Date().getFullYear();
-  document.getElementById("current-year").textContent = currentYear;
 
   const calendarContainer = document.getElementById("calendar-container");
   const vacationDaysInput = document.getElementById("vacation-days-input");
   const suggestButton = document.getElementById("suggest-button");
   const suggestionsList = document.getElementById("suggestions-list");
   const remainingDaysSpan = document.getElementById("remaining-days");
+  const currentYearSpan = document.getElementById("current-year");
+  const pageTitleText = document.getElementById("page-title-text");
+  const languageToggle = document.getElementById("language-toggle");
+  const controlsLabel = document.getElementById("vacation-days-label");
+  const suggestionsHeading = document.getElementById("suggestions-heading");
+  const remainingLabel = document.getElementById("remaining-label");
+  const legendWeekendLabel = document.getElementById("legend-weekend-label");
+  const legendHolidayLabel = document.getElementById("legend-holiday-label");
+  const legendVacationLabel = document.getElementById("legend-vacation-label");
 
-  const dayNames = ["Pon", "Uto", "Sre", "Čet", "Pet", "Sub", "Ned"];
-  const monthNames = [
-    "Januar",
-    "Februar",
-    "Mart",
-    "April",
-    "Maj",
-    "Jun",
-    "Jul",
-    "Avgust",
-    "Septembar",
-    "Oktobar",
-    "Novembar",
-    "Decembar",
-  ];
+  const translations = {
+    sr: {
+      title: "Optimizator Godišnjeg Odmora",
+      controlsLabel: "Unesite broj dana godišnjeg odmora:",
+      suggestButton: "Prikaži Predloge",
+      remainingLabel: "Preostalo dana:",
+      suggestionsHeading: "Predlozi:",
+      legendWeekend: "Vikend",
+      legendHoliday: "Praznik",
+      legendVacation: "Godišnji odmor",
+      languageToggle: "English",
+      errorHolidayLoad:
+        "Greška pri učitavanju praznika. Molimo pokušajte ponovo kasnije.",
+      invalidVacationDays: "Unesite validan broj dana odmora.",
+      noDaysUsed: "Već ste iskoristili sve dostupne dane odmora.",
+      noDaysAvailable: "Nemate dostupnih dana za generisanje predloga.",
+      noPlans: "Nije moguće generisati planove za preostale dane odmora.",
+      alertNotEnoughDays:
+        "Nemate dovoljno preostalih dana godišnjeg odmora.",
+      alertOverLimit:
+        "Dodavanjem ovog plana biste prekoračili ukupan broj dana odmora. Preostalo: {remaining}, Potrebno za ovaj plan: {needed}",
+      planEfficiency: "Plan Efikasnosti",
+      planMaxFreeDays: "Plan Max Slobodnih Dana",
+      planShorterVacations: "Plan Kraćih Odmora",
+      vacationDaysWord: "dana odmora",
+      totalConnectedDays: "ukupno spojenih slobodnih dana",
+      holidayWord: "Praznik",
+    },
+    en: {
+      title: "Vacation Optimizer",
+      controlsLabel: "Enter the number of vacation days:",
+      suggestButton: "Show Suggestions",
+      remainingLabel: "Days remaining:",
+      suggestionsHeading: "Suggestions:",
+      legendWeekend: "Weekend",
+      legendHoliday: "Holiday",
+      legendVacation: "Vacation",
+      languageToggle: "Srpski",
+      errorHolidayLoad:
+        "There was an error loading public holidays. Please try again later.",
+      invalidVacationDays: "Enter a valid number of vacation days.",
+      noDaysUsed: "You have already used all available vacation days.",
+      noDaysAvailable: "You do not have any days available for suggestions.",
+      noPlans: "It is not possible to generate plans for the remaining vacation days.",
+      alertNotEnoughDays:
+        "You do not have enough remaining vacation days.",
+      alertOverLimit:
+        "Adding this plan would exceed your total vacation days. Remaining: {remaining}, Needed for this plan: {needed}",
+      planEfficiency: "Efficiency Plan",
+      planMaxFreeDays: "Maximum Free Days Plan",
+      planShorterVacations: "Short Vacation Plan",
+      vacationDaysWord: "vacation days",
+      totalConnectedDays: "total connected free days",
+      holidayWord: "Holiday",
+    },
+  };
+
+  const dayNamesByLanguage = {
+    sr: ["Pon", "Uto", "Sre", "Čet", "Pet", "Sub", "Ned"],
+    en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  };
+
+  const monthNamesByLanguage = {
+    sr: [
+      "Januar",
+      "Februar",
+      "Mart",
+      "April",
+      "Maj",
+      "Jun",
+      "Jul",
+      "Avgust",
+      "Septembar",
+      "Oktobar",
+      "Novembar",
+      "Decembar",
+    ],
+    en: [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ],
+  };
 
   let publicHolidays = [];
   let totalVacationDays = 0;
   let selectedVacationDates = new Set();
+  let currentLanguage = translations[localStorage.getItem("language")]
+    ? localStorage.getItem("language")
+    : "sr";
+
+  const getText = (key, language = currentLanguage) =>
+    translations[language]?.[key] || translations.sr[key];
+
+  const translate = (key, params = {}) => {
+    let text = getText(key) || key;
+    Object.keys(params).forEach((paramKey) => {
+      text = text.replaceAll(`{${paramKey}}`, params[paramKey]);
+    });
+    return text;
+  };
+
+  const getDayNames = () => dayNamesByLanguage[currentLanguage];
+  const getMonthNames = () => monthNamesByLanguage[currentLanguage];
 
   const formatDate = (date) => {
     const year = date.getFullYear();
@@ -34,6 +136,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const day = date.getDate().toString().padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
+
+  const countUsedVacationWorkdays = () =>
+    Array.from(selectedVacationDates).filter((dateStr) => {
+      const date = new Date(dateStr);
+      const dayOfWeek = date.getDay();
+      const isWeekend = dayOfWeek === 6 || dayOfWeek === 0;
+      const isHoliday = publicHolidays.some((holiday) => holiday.date === dateStr);
+      return !isWeekend && !isHoliday;
+    }).length;
 
   const loadFromLocalStorage = () => {
     const savedDays = localStorage.getItem("totalVacationDays");
@@ -48,7 +159,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (savedSelection) {
       selectedVacationDates = new Set(JSON.parse(savedSelection));
     }
-    updateRemainingDays();
   };
 
   const saveToLocalStorage = () => {
@@ -57,16 +167,11 @@ document.addEventListener("DOMContentLoaded", () => {
       "selectedVacationDates",
       JSON.stringify(Array.from(selectedVacationDates))
     );
+    localStorage.setItem("language", currentLanguage);
   };
 
   const updateRemainingDays = () => {
-    const usedDays = Array.from(selectedVacationDates).filter((dateStr) => {
-      const date = new Date(dateStr);
-      const dayOfWeek = date.getDay();
-      const isWeekend = dayOfWeek === 6 || dayOfWeek === 0;
-      const isHoliday = publicHolidays.some((h) => h.date === dateStr);
-      return !isWeekend && !isHoliday;
-    }).length;
+    const usedDays = countUsedVacationWorkdays();
     remainingDaysSpan.textContent = totalVacationDays - usedDays;
   };
 
@@ -79,14 +184,13 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const holidays = await response.json();
-      publicHolidays = holidays.map((h) => ({
-        date: h.date,
-        name: h.localName,
+      publicHolidays = holidays.map((holiday) => ({
+        date: holiday.date,
+        name: holiday.localName,
       }));
     } catch (error) {
       console.error("Failed to fetch public holidays:", error);
-      calendarContainer.innerHTML =
-        "<p>Greška pri učitavanju praznika. Molimo pokušajte ponovo kasnije.</p>";
+      calendarContainer.innerHTML = `<p>${translate("errorHolidayLoad")}</p>`;
     }
   };
 
@@ -95,12 +199,30 @@ document.addEventListener("DOMContentLoaded", () => {
     return day === 6 || day === 0;
   };
 
-  const isHoliday = (dateStr) => {
-    return publicHolidays.some((h) => h.date === dateStr);
+  const isHoliday = (dateStr) =>
+    publicHolidays.some((holiday) => holiday.date === dateStr);
+
+  const updateStaticText = () => {
+    const texts = translations[currentLanguage];
+    document.documentElement.lang = currentLanguage;
+    document.title = texts.title;
+    pageTitleText.textContent = texts.title;
+    currentYearSpan.textContent = currentYear;
+    controlsLabel.textContent = texts.controlsLabel;
+    suggestButton.textContent = texts.suggestButton;
+    remainingLabel.textContent = texts.remainingLabel;
+    suggestionsHeading.textContent = texts.suggestionsHeading;
+    legendWeekendLabel.textContent = texts.legendWeekend;
+    legendHolidayLabel.textContent = texts.legendHoliday;
+    legendVacationLabel.textContent = texts.legendVacation;
+    languageToggle.textContent = texts.languageToggle;
   };
 
   const renderCalendar = () => {
     calendarContainer.innerHTML = "";
+    const monthNames = getMonthNames();
+    const dayNames = getDayNames();
+
     for (let month = 0; month < 12; month++) {
       const monthDiv = document.createElement("div");
       monthDiv.classList.add("month");
@@ -134,86 +256,59 @@ document.addEventListener("DOMContentLoaded", () => {
         const dayDiv = document.createElement("div");
         dayDiv.classList.add("day");
         dayDiv.textContent = day;
+
         const currentDate = new Date(currentYear, month, day);
         const dateStr = formatDate(currentDate);
         dayDiv.dataset.date = dateStr;
 
         if (isWeekend(currentDate)) dayDiv.classList.add("weekend");
         if (isHoliday(dateStr)) dayDiv.classList.add("holiday");
-        if (selectedVacationDates.has(dateStr))
-          dayDiv.classList.add("vacation");
+        if (selectedVacationDates.has(dateStr)) dayDiv.classList.add("vacation");
 
         if (!isWeekend(currentDate) && !isHoliday(dateStr)) {
           dayDiv.classList.add("selectable");
-          dayDiv.addEventListener("click", () =>
-            toggleVacationDay(dateStr, dayDiv)
-          );
+          dayDiv.addEventListener("click", () => toggleVacationDay(dateStr, dayDiv));
         } else if (isHoliday(dateStr)) {
           dayDiv.title =
-            publicHolidays.find((h) => h.date === dateStr)?.name || "Praznik";
+            publicHolidays.find((holiday) => holiday.date === dateStr)?.name ||
+            translate("holidayWord");
         }
 
         daysGrid.appendChild(dayDiv);
       }
+
       monthDiv.appendChild(daysGrid);
       calendarContainer.appendChild(monthDiv);
     }
-    updateRemainingDays();
-  };
 
-  const toggleVacationDay = (dateStr, dayDiv) => {
-    const date = new Date(dateStr);
-    const isWorkDay = !isWeekend(date) && !isHoliday(dateStr);
-    const usedDays = Array.from(selectedVacationDates).filter((d) => {
-      const dt = new Date(d);
-      return !isWeekend(dt) && !isHoliday(d);
-    }).length;
-
-    if (selectedVacationDates.has(dateStr)) {
-      selectedVacationDates.delete(dateStr);
-      dayDiv.classList.remove("vacation");
-    } else {
-      if (isWorkDay && usedDays >= totalVacationDays) {
-        alert("Nemate dovoljno preostalih dana godišnjeg odmora.");
-        return;
-      }
-      selectedVacationDates.add(dateStr);
-      dayDiv.classList.add("vacation");
-    }
     updateRemainingDays();
-    saveToLocalStorage();
   };
 
   const getSuggestions = () => {
     suggestionsList.innerHTML = "";
     const availableDaysTotal = parseInt(vacationDaysInput.value, 10);
 
-    const manuallyUsedWorkDays = Array.from(selectedVacationDates).filter(
-      (d) => {
-        const dt = new Date(d);
-        return !isWeekend(dt) && !isHoliday(d);
-      }
-    ).length;
-
+    const manuallyUsedWorkDays = countUsedVacationWorkdays();
     const remainingAvailableDays = availableDaysTotal - manuallyUsedWorkDays;
 
     if (isNaN(availableDaysTotal) || availableDaysTotal <= 0) {
-      suggestionsList.innerHTML = "<li>Unesite validan broj dana odmora.</li>";
+      suggestionsList.innerHTML = `<li>${translate("invalidVacationDays")}</li>`;
       return;
     }
+
     if (remainingAvailableDays <= 0 && availableDaysTotal > 0) {
-      suggestionsList.innerHTML =
-        "<li>Već ste iskoristili sve dostupne dane odmora.</li>";
+      suggestionsList.innerHTML = `<li>${translate("noDaysUsed")}</li>`;
       return;
     }
+
     if (remainingAvailableDays <= 0) {
-      suggestionsList.innerHTML =
-        "<li>Nemate dostupnih dana za generisanje predloga.</li>";
+      suggestionsList.innerHTML = `<li>${translate("noDaysAvailable")}</li>`;
       return;
     }
 
     const potentialPeriods = [];
     const allDates = [];
+
     for (let month = 0; month < 12; month++) {
       const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
       for (let day = 1; day <= daysInMonth; day++) {
@@ -233,8 +328,8 @@ document.addEventListener("DOMContentLoaded", () => {
     for (let i = 0; i < allDates.length; i++) {
       let currentVacationDays = 0;
       let consecutiveFreeDays = 0;
-      let periodDates = [];
-      let vacationDatesInPeriod = [];
+      const periodDates = [];
+      const vacationDatesInPeriod = [];
       let overlapsManualSelection = false;
 
       for (let j = i; j < allDates.length; j++) {
@@ -269,20 +364,21 @@ document.addEventListener("DOMContentLoaded", () => {
         ) {
           const efficiency = consecutiveFreeDays / currentVacationDays;
           const exists = potentialPeriods.some(
-            (p) =>
-              p.start === periodDates[0] &&
-              p.end === periodDates[periodDates.length - 1] &&
-              p.vacationDaysNeeded === currentVacationDays
+            (period) =>
+              period.start === periodDates[0] &&
+              period.end === periodDates[periodDates.length - 1] &&
+              period.vacationDaysNeeded === currentVacationDays
           );
 
           if (!exists) {
             let holidaysInPeriod = 0;
             let weekendsInPeriod = 0;
-            periodDates.forEach((dStr) => {
-              const dInfo = freeDaysMap.get(dStr);
-              if (!vacationDatesInPeriod.includes(dStr)) {
-                if (dInfo.isHoliday) holidaysInPeriod++;
-                if (dInfo.isWeekend) weekendsInPeriod++;
+
+            periodDates.forEach((dateString) => {
+              const dayInfoForDate = freeDaysMap.get(dateString);
+              if (!vacationDatesInPeriod.includes(dateString)) {
+                if (dayInfoForDate.isHoliday) holidaysInPeriod++;
+                if (dayInfoForDate.isWeekend) weekendsInPeriod++;
               }
             });
 
@@ -293,15 +389,18 @@ document.addEventListener("DOMContentLoaded", () => {
               totalFreeDaysInPeriod: consecutiveFreeDays,
               holidays: holidaysInPeriod,
               weekends: weekendsInPeriod,
-              efficiency: efficiency,
+              efficiency,
               vacationDates: [...vacationDatesInPeriod],
             });
           }
         }
       }
+
       if (overlapsManualSelection) {
+        continue;
       }
     }
+
     const generatedPlans = [];
 
     const generatePlan = (periods, daysLimit, sortFn) => {
@@ -312,8 +411,8 @@ document.addEventListener("DOMContentLoaded", () => {
       for (const period of sortedPeriods) {
         if (daysUsed >= daysLimit) break;
 
-        const periodOverlaps = period.vacationDates.some((d) =>
-          selectedVacationDates.has(d)
+        const periodOverlaps = period.vacationDates.some((dateStr) =>
+          selectedVacationDates.has(dateStr)
         );
         if (periodOverlaps) continue;
 
@@ -321,15 +420,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const cost = newVacationDays.length;
 
         if (cost > 0 && daysUsed + cost <= daysLimit) {
-          const alreadyAddedInPlan = newVacationDays.some((d) =>
-            planDates.has(d)
+          const alreadyAddedInPlan = newVacationDays.some((dateStr) =>
+            planDates.has(dateStr)
           );
           if (!alreadyAddedInPlan) {
-            newVacationDays.forEach((d) => planDates.add(d));
+            newVacationDays.forEach((dateStr) => planDates.add(dateStr));
             daysUsed += cost;
           }
         }
       }
+
       return planDates;
     };
 
@@ -340,8 +440,9 @@ document.addEventListener("DOMContentLoaded", () => {
         b.efficiency - a.efficiency ||
         b.totalFreeDaysInPeriod - a.totalFreeDaysInPeriod
     );
-    if (plan1.size > 0)
-      generatedPlans.push({ name: "Plan Efikasnosti", dates: plan1 });
+    if (plan1.size > 0) {
+      generatedPlans.push({ name: translate("planEfficiency"), dates: plan1 });
+    }
 
     const plan2 = generatePlan(
       potentialPeriods,
@@ -354,7 +455,10 @@ document.addEventListener("DOMContentLoaded", () => {
       plan2.size > 0 &&
       JSON.stringify([...plan1].sort()) !== JSON.stringify([...plan2].sort())
     ) {
-      generatedPlans.push({ name: "Plan Max Slobodnih Dana", dates: plan2 });
+      generatedPlans.push({
+        name: translate("planMaxFreeDays"),
+        dates: plan2,
+      });
     }
 
     const plan3 = generatePlan(
@@ -366,7 +470,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     const plan1SortedJSON = JSON.stringify([...plan1].sort());
     const plan2ExistsAndDifferent = generatedPlans.some(
-      (p) => p.name === "Plan Max Slobodnih Dana"
+      (plan) => plan.name === translate("planMaxFreeDays")
     );
     const plan2SortedJSON = plan2ExistsAndDifferent
       ? JSON.stringify([...plan2].sort())
@@ -378,12 +482,14 @@ document.addEventListener("DOMContentLoaded", () => {
       plan3SortedJSON !== plan1SortedJSON &&
       (!plan2SortedJSON || plan3SortedJSON !== plan2SortedJSON)
     ) {
-      generatedPlans.push({ name: "Plan Kraćih Odmora", dates: plan3 });
+      generatedPlans.push({
+        name: translate("planShorterVacations"),
+        dates: plan3,
+      });
     }
 
     if (generatedPlans.length === 0) {
-      suggestionsList.innerHTML =
-        "<li>Nije moguće generisati planove za preostale dane odmora.</li>";
+      suggestionsList.innerHTML = `<li>${translate("noPlans")}</li>`;
       return;
     }
 
@@ -391,15 +497,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const li = document.createElement("li");
       const planDatesArray = Array.from(plan.dates);
       const usedDaysInPlan = planDatesArray.length;
-
-      let totalAchievedFreeDays = 0;
-      let uniqueFreeDaysAdded = new Set([...planDatesArray]);
+      const uniqueFreeDaysAdded = new Set([...planDatesArray]);
 
       planDatesArray.forEach((planDateStr) => {
         [-1, 1].forEach((offset) => {
-          let adjacentDate = new Date(planDateStr);
+          const adjacentDate = new Date(planDateStr);
           adjacentDate.setDate(adjacentDate.getDate() + offset);
-          let checkDate = adjacentDate;
+          const checkDate = adjacentDate;
 
           while (true) {
             const checkDateStr = formatDate(checkDate);
@@ -417,9 +521,11 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         });
       });
-      totalAchievedFreeDays = uniqueFreeDaysAdded.size;
 
-      li.textContent = `${plan.name}: ${usedDaysInPlan} dana odmora -> ${totalAchievedFreeDays} ukupno spojenih slobodnih dana.`;
+      const totalAchievedFreeDays = uniqueFreeDaysAdded.size;
+      li.textContent = `${plan.name}: ${usedDaysInPlan} ${translate(
+        "vacationDaysWord"
+      )} -> ${totalAchievedFreeDays} ${translate("totalConnectedDays")}.`;
       li.style.cursor = "pointer";
       li.dataset.planDates = JSON.stringify(planDatesArray);
 
@@ -430,11 +536,35 @@ document.addEventListener("DOMContentLoaded", () => {
         li.classList.add("selected-suggestion");
       }
 
-      li.addEventListener("click", () =>
-        togglePlanSelection(planDatesArray, li)
-      );
+      li.addEventListener("click", () => togglePlanSelection(planDatesArray, li));
       suggestionsList.appendChild(li);
     });
+  };
+
+  const toggleVacationDay = (dateStr, dayDiv) => {
+    const date = new Date(dateStr);
+    const isWorkDay = !isWeekend(date) && !isHoliday(dateStr);
+    const usedDays = countUsedVacationWorkdays();
+
+    if (selectedVacationDates.has(dateStr)) {
+      selectedVacationDates.delete(dateStr);
+      dayDiv.classList.remove("vacation");
+    } else {
+      if (isWorkDay && usedDays >= totalVacationDays) {
+        alert(translate("alertNotEnoughDays"));
+        return;
+      }
+      selectedVacationDates.add(dateStr);
+      dayDiv.classList.add("vacation");
+    }
+
+    updateRemainingDays();
+    saveToLocalStorage();
+    renderCalendar();
+
+    if (suggestionsList.children.length > 0) {
+      getSuggestions();
+    }
   };
 
   const togglePlanSelection = (planDatesArray, listItemElement) => {
@@ -449,18 +579,14 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     } else {
       const newWorkdaysToAdd = planDatesArray.length;
-      const currentTotalUsedWorkdays = Array.from(selectedVacationDates).filter(
-        (d) => {
-          const dt = new Date(d);
-          return !isWeekend(dt) && !isHoliday(d);
-        }
-      ).length;
+      const currentTotalUsedWorkdays = countUsedVacationWorkdays();
 
       if (currentTotalUsedWorkdays + newWorkdaysToAdd > totalVacationDays) {
         alert(
-          `Dodavanjem ovog plana biste prekoračili ukupan broj dana odmora. Preostalo: ${
-            totalVacationDays - currentTotalUsedWorkdays
-          }, Potrebno za ovaj plan: ${newWorkdaysToAdd}`
+          translate("alertOverLimit", {
+            remaining: totalVacationDays - currentTotalUsedWorkdays,
+            needed: newWorkdaysToAdd,
+          })
         );
         return;
       }
@@ -475,21 +601,41 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCalendar();
     saveToLocalStorage();
     updateRemainingDays();
+
+    if (suggestionsList.children.length > 0) {
+      getSuggestions();
+    }
   };
 
-  vacationDaysInput.addEventListener("change", (e) => {
-    totalVacationDays = parseInt(e.target.value, 10) || 0;
+  const setLanguage = (language) => {
+    currentLanguage = language;
+    saveToLocalStorage();
+    updateStaticText();
+    renderCalendar();
+
+    if (suggestionsList.children.length > 0) {
+      getSuggestions();
+    }
+  };
+
+  vacationDaysInput.addEventListener("change", (event) => {
+    totalVacationDays = parseInt(event.target.value, 10) || 0;
     updateRemainingDays();
     saveToLocalStorage();
     suggestionsList.innerHTML = "";
   });
 
   suggestButton.addEventListener("click", getSuggestions);
+  languageToggle.addEventListener("click", () => {
+    setLanguage(currentLanguage === "sr" ? "en" : "sr");
+  });
 
   const initializeApp = async () => {
     loadFromLocalStorage();
+    updateStaticText();
     await fetchHolidays(currentYear);
     renderCalendar();
+    updateRemainingDays();
   };
 
   initializeApp();
