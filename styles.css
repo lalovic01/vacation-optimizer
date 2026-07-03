@@ -99,6 +99,33 @@ h2 {
   transition: background-color 0.2s ease;
 }
 
+.suggestion-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.suggestion-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.suggestion-actions button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #fff;
+  background-color: #007bff;
+  font-size: 0.85rem;
+}
+
+.suggestion-actions button:hover {
+  background-color: #0056b3;
+}
+
 .suggestions li:last-child {
   border-bottom: none;
 }
@@ -187,6 +214,13 @@ h2 {
   background-color: #b3e5fc; /* Light blue */
   color: #01579b;
   font-weight: bold;
+}
+
+.day.preview-vacation {
+  background: linear-gradient(45deg, #e7f1ff 50%, #fff6da 50%);
+  color: #0b5ed7;
+  font-weight: bold;
+  outline: 1px dashed rgba(11, 94, 215, 0.45);
 }
 
 .day.holiday.vacation {

@@ -40,6 +40,9 @@ document.addEventListener("DOMContentLoaded", () => {
       planEfficiency: "Plan Efikasnosti",
       planMaxFreeDays: "Plan Max Slobodnih Dana",
       planShorterVacations: "Plan Kraćih Odmora",
+      previewPlan: "Pregled",
+      applyPlan: "Primeni",
+      dismissPlan: "Odbaci",
       vacationDaysWord: "dana odmora",
       totalConnectedDays: "ukupno spojenih slobodnih dana",
       holidayWord: "Praznik",
@@ -67,6 +70,9 @@ document.addEventListener("DOMContentLoaded", () => {
       planEfficiency: "Efficiency Plan",
       planMaxFreeDays: "Maximum Free Days Plan",
       planShorterVacations: "Short Vacation Plan",
+      previewPlan: "Preview",
+      applyPlan: "Apply",
+      dismissPlan: "Dismiss",
       vacationDaysWord: "vacation days",
       totalConnectedDays: "total connected free days",
       holidayWord: "Holiday",
@@ -112,6 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let publicHolidays = [];
   let totalVacationDays = 0;
   let selectedVacationDates = new Set();
+  let previewVacationDates = new Set();
   let currentLanguage = translations[localStorage.getItem("language")]
     ? localStorage.getItem("language")
     : "sr";
@@ -202,6 +209,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const isHoliday = (dateStr) =>
     publicHolidays.some((holiday) => holiday.date === dateStr);
 
+  const clearPreview = () => {
+    previewVacationDates = new Set();
+  };
+
+  const setPreviewPlan = (planDatesArray) => {
+    previewVacationDates = new Set(planDatesArray);
+    renderCalendar();
+  };
+
   const updateStaticText = () => {
     const texts = translations[currentLanguage];
     document.documentElement.lang = currentLanguage;
@@ -264,6 +280,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isWeekend(currentDate)) dayDiv.classList.add("weekend");
         if (isHoliday(dateStr)) dayDiv.classList.add("holiday");
         if (selectedVacationDates.has(dateStr)) dayDiv.classList.add("vacation");
+        if (
+          previewVacationDates.has(dateStr) &&
+          !selectedVacationDates.has(dateStr)
+        ) {
+          dayDiv.classList.add("preview-vacation");
+        }
 
         if (!isWeekend(currentDate) && !isHoliday(dateStr)) {
           dayDiv.classList.add("selectable");
@@ -495,6 +517,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     generatedPlans.forEach((plan) => {
       const li = document.createElement("li");
+      const planRow = document.createElement("div");
+      planRow.classList.add("suggestion-row");
+
+      const planText = document.createElement("span");
       const planDatesArray = Array.from(plan.dates);
       const usedDaysInPlan = planDatesArray.length;
       const uniqueFreeDaysAdded = new Set([...planDatesArray]);
@@ -523,11 +549,53 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const totalAchievedFreeDays = uniqueFreeDaysAdded.size;
-      li.textContent = `${plan.name}: ${usedDaysInPlan} ${translate(
+      planText.textContent = `${plan.name}: ${usedDaysInPlan} ${translate(
         "vacationDaysWord"
       )} -> ${totalAchievedFreeDays} ${translate("totalConnectedDays")}.`;
-      li.style.cursor = "pointer";
       li.dataset.planDates = JSON.stringify(planDatesArray);
+
+      const actions = document.createElement("div");
+      actions.classList.add("suggestion-actions");
+
+      const previewButton = document.createElement("button");
+      previewButton.type = "button";
+      previewButton.textContent = translate("previewPlan");
+
+      const applyButton = document.createElement("button");
+      applyButton.type = "button";
+      applyButton.textContent = translate("applyPlan");
+
+      const dismissButton = document.createElement("button");
+      dismissButton.type = "button";
+      dismissButton.textContent = translate("dismissPlan");
+
+      planRow.addEventListener("click", () => {
+        setPreviewPlan(planDatesArray);
+      });
+
+      previewButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setPreviewPlan(planDatesArray);
+      });
+
+      applyButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        clearPreview();
+        applyPlanSelection(planDatesArray, li);
+      });
+
+      dismissButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        clearPreview();
+        renderCalendar();
+      });
+
+      actions.appendChild(previewButton);
+      actions.appendChild(applyButton);
+      actions.appendChild(dismissButton);
+
+      planRow.appendChild(planText);
+      planRow.appendChild(actions);
 
       const arePlanDatesSelected =
         planDatesArray.length > 0 &&
@@ -536,12 +604,13 @@ document.addEventListener("DOMContentLoaded", () => {
         li.classList.add("selected-suggestion");
       }
 
-      li.addEventListener("click", () => togglePlanSelection(planDatesArray, li));
+      li.appendChild(planRow);
       suggestionsList.appendChild(li);
     });
   };
 
   const toggleVacationDay = (dateStr, dayDiv) => {
+    clearPreview();
     const date = new Date(dateStr);
     const isWorkDay = !isWeekend(date) && !isHoliday(dateStr);
     const usedDays = countUsedVacationWorkdays();
@@ -567,36 +636,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  const togglePlanSelection = (planDatesArray, listItemElement) => {
-    const isCurrentlySelected = listItemElement.classList.contains(
-      "selected-suggestion"
-    );
+  const applyPlanSelection = (planDatesArray, listItemElement) => {
+    const newWorkdaysToAdd = planDatesArray.length;
+    const currentTotalUsedWorkdays = countUsedVacationWorkdays();
 
-    if (isCurrentlySelected) {
-      listItemElement.classList.remove("selected-suggestion");
-      planDatesArray.forEach((dateStr) => {
-        selectedVacationDates.delete(dateStr);
-      });
-    } else {
-      const newWorkdaysToAdd = planDatesArray.length;
-      const currentTotalUsedWorkdays = countUsedVacationWorkdays();
-
-      if (currentTotalUsedWorkdays + newWorkdaysToAdd > totalVacationDays) {
-        alert(
-          translate("alertOverLimit", {
-            remaining: totalVacationDays - currentTotalUsedWorkdays,
-            needed: newWorkdaysToAdd,
-          })
-        );
-        return;
-      }
-
-      planDatesArray.forEach((dateStr) => {
-        selectedVacationDates.add(dateStr);
-      });
-
-      listItemElement.classList.add("selected-suggestion");
+    if (currentTotalUsedWorkdays + newWorkdaysToAdd > totalVacationDays) {
+      alert(
+        translate("alertOverLimit", {
+          remaining: totalVacationDays - currentTotalUsedWorkdays,
+          needed: newWorkdaysToAdd,
+        })
+      );
+      return;
     }
+
+    planDatesArray.forEach((dateStr) => {
+      selectedVacationDates.add(dateStr);
+    });
+
+    listItemElement.classList.add("selected-suggestion");
 
     renderCalendar();
     saveToLocalStorage();
